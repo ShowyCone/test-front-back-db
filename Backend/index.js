@@ -1,7 +1,7 @@
 const express = require('express')
 const bodyParser = require('body-parser')
 const cors = require('cors')
-const db = require('./db')
+const db = require('./db') // Suponiendo que db.js contiene la conexión a la base de datos
 
 const app = express()
 app.use(express.json())
@@ -13,6 +13,8 @@ app.use(cors())
 app.use(bodyParser.json())
 
 // Rutas CRUD
+
+// Obtener todos los items
 app.get('/items', (req, res) => {
   db.query('SELECT * FROM items', (err, results) => {
     if (err) return res.status(500).json({ error: err })
@@ -20,50 +22,61 @@ app.get('/items', (req, res) => {
   })
 })
 
+// Crear un nuevo item
 app.post('/items', async (req, res) => {
-  const { content } = req.body
-  if (!content) {
-    return res.status(400).json({ error: 'Content is required' })
+  const { description } = req.body
+
+  if (!description) {
+    return res.status(400).json({ error: 'Description is required' })
   }
 
   try {
-    // Obtenemos el último item basado en el campo 'name'
-    const [lastItem] = await pool.execute(
-      'SELECT * FROM items ORDER BY name DESC LIMIT 1'
-    )
+    // Verifica el valor de 'description'
+    console.log('Received description:', description)
 
-    let nextNumber = 1 // Default a 1 si no hay items en la base de datos
+    // Obtener el último item para generar el nombre nuevo
+    db.query(
+      'SELECT * FROM items ORDER BY id DESC LIMIT 1',
+      async (err, rows) => {
+        if (err) {
+          console.error('Error al obtener el último item:', err)
+          return res
+            .status(500)
+            .json({ error: 'Error al obtener el último item' })
+        }
 
-    if (lastItem.length > 0) {
-      // Extraemos el número del último 'name' (Ejemplo: "Item 5")
-      const lastName = lastItem[0].name
-      const match = lastName.match(/Item (\d+)/) // Extraemos el número con regex
+        const newItemName =
+          rows.length > 0 ? `Item ${rows[0].id + 1}` : 'Item 1'
+        console.log('Generated name:', newItemName)
 
-      if (match && match[1]) {
-        nextNumber = parseInt(match[1]) + 1 // Incrementamos el número
+        // Insertar el nuevo item en la base de datos
+        db.query(
+          'INSERT INTO items (name, description) VALUES (?, ?)',
+          [newItemName, description],
+          (err, result) => {
+            if (err) {
+              console.error('Error al insertar el item:', err)
+              return res.status(500).json({ error: 'Error al agregar el item' })
+            }
+
+            // Responder con el nuevo item
+            const newItem = {
+              id: result.insertId,
+              name: newItemName,
+              description,
+            }
+            res.status(201).json(newItem)
+          }
+        )
       }
-    }
-
-    const name = `Item ${nextNumber}` // Asignamos el nombre "Item x"
-
-    // Insertamos el nuevo item con el nombre calculado
-    const [result] = await pool.execute(
-      'INSERT INTO items (name, description) VALUES (?, ?)',
-      [name, content]
     )
-
-    // Obtenemos el nuevo item para devolverlo en la respuesta
-    const [newItem] = await pool.execute('SELECT * FROM items WHERE id = ?', [
-      result.insertId,
-    ])
-
-    res.status(201).json(newItem[0])
   } catch (error) {
-    console.error('Error al agregar el item', error)
+    console.error('Error en el backend:', error)
     res.status(500).json({ error: 'Error al agregar el item' })
   }
 })
 
+// Actualizar un item
 app.put('/items/:id', (req, res) => {
   const { id } = req.params
   const { name, description } = req.body
@@ -77,6 +90,7 @@ app.put('/items/:id', (req, res) => {
   )
 })
 
+// Eliminar un item
 app.delete('/items/:id', (req, res) => {
   const { id } = req.params
   db.query('DELETE FROM items WHERE id = ?', [id], (err) => {

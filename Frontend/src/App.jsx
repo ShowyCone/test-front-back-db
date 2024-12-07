@@ -24,12 +24,13 @@ const App = () => {
   const addItem = async () => {
     if (newDescription.trim() === '') return // Evitar agregar descripción vacía
     try {
+      // Enviar solo la descripción; el nombre se genera en el backend
       const response = await axios.post(
         'https://test-front-back-db.onrender.com/items',
         {
-          content: newDescription,
+          description: newDescription, // Se pasa solo la descripción
         }
-      ) // Actualizado
+      )
       setItems([...items, response.data]) // Agregar el nuevo item al estado
       setNewDescription('') // Limpiar el campo de descripción
     } catch (error) {
@@ -40,7 +41,7 @@ const App = () => {
   // Eliminar un item
   const deleteItem = async (id) => {
     try {
-      await axios.delete(`https://test-front-back-db.onrender.com/items/${id}`) // Actualizado
+      await axios.delete(`https://test-front-back-db.onrender.com/items/${id}`)
       setItems(items.filter((item) => item.id !== id)) // Eliminar el item del estado
     } catch (error) {
       console.error('Error al eliminar el item', error)
