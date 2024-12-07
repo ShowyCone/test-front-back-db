@@ -1,10 +1,17 @@
 const express = require('express')
 const bodyParser = require('body-parser')
 const cors = require('cors')
-const db = require('./db') // Suponiendo que db.js contiene la conexión a la base de datos
+const db = require('./db')
 
 const app = express()
 app.use(express.json())
+
+app.use(
+  cors({
+    origin: 'https://showycone.github.io',
+    methods: 'GET,POST,PUT,DELETE',
+  })
+)
 
 const PORT = process.env.PORT || 5000
 
